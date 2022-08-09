@@ -1,0 +1,86 @@
+nc <- read.csv("nc.csv", header=T)
+# remove first column, 'fage' variable 
+nc <- nc[,-1]
+# remove records with missing values
+nc <- na.omit(nc)
+dim(nc)
+
+attach(nc)
+
+full_term <- ifelse(nc$premie == "full term", 1, 0)
+cor(full_term, weeks)
+#eliminate “premie” and “low birth weight” collinear as they measure same thing
+
+smoking_habit <- ifelse(nc$habit == "nonsmoker", 1, 0)
+married <- ifelse(nc$marital == "married", 1, 0)
+gender1 <- ifelse(nc$gender == "male", 1, 0)
+white <- ifelse(nc$whitemom == "white", 1, 0)
+
+full_model <- lm(weight ~ nc$mage + nc$weeks + nc$visits + married + nc$gained + gender1 + smoking_habit + white)
+summary(full_model)
+
+#rsquared value is 47.28 
+#means 47.28% of variability observed in birth weight is explained by the regression model. it is a moderately good model, but does not explain all of the variability in birth weight
+
+#checking that all of the predictors are significant using backwards elimination; is saturated model the best?
+
+confint(full_model)
+anova(full_model)
+
+no_visits <- lm(nc$weight ~ nc$mage + nc$weeks + married + nc$gained +gender1 + smoking_habit + white)
+summary(no_visits)
+anova(no_visits)
+
+no_mage <- lm(nc$weight ~ nc$weeks + married + nc$gained + gender1 + smoking_habit + white)
+summary(no_mage)
+
+#compare ss(regression) to ss(residiuals) - want ss(regression) to be greater
+ss_residuals <- anova(no_visits)["Residuals", "Sum Sq"]
+ss_residuals
+
+ssto <- sum(anova(no_visits)[, "Sum Sq"])
+ssto
+
+ss_regression <- ssto - ss_residuals
+ss_regression
+
+#testing null hypothesis that all slopes are 0
+
+msr <- ss_regression/8
+msr
+
+mse <- ss_residuals/(953)
+mse
+
+f_star <- msr/mse
+f_star
+
+qf(0.5, df1=8, df2=953, lower.tail = FALSE)
+pf(f_star, df1=6, df2=953, lower.tail = FALSE)
+
+#The F statistic for this model is 106.77, greater than critical value with F ~ 8,953 df 
+#rejection region for this test at a 5% significant level is an F test statistic below 0.92
+#This test shows that not all of the slopes in my model are equal to zero. Overall, this means that there is real predictive value in this model.
+
+#checking model assumptions (linearity, homoscedasticity, independence, normality)
+
+res <- resid(no_visits)
+qqnorm(res, pch=16)
+qqline(res)
+
+hist(res)
+
+plot(no_visits)
+
+sum(res)
+
+#histogram of residuals looks normal
+#qqplot indicates there are some outliers at both extremes of the data
+# plot of residual vs fitted shows clustered data, overall line is not horizontal at 0; linearity does not hold
+#to better improve this model, multicollinearity should be considered
+
+#example of interpreting partial slopes
+#Mage: 0.0069 Birth weight is expected to increase by 0.0069 lbs on average for every year a mother’s age increases, holding other predictors constant.
+
+
+
